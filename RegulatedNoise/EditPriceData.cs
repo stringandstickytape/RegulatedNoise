@@ -7,21 +7,24 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using RegulatedNoise.Enums_and_Utility_Classes;
 
 namespace RegulatedNoise
 {
-    public partial class EditPriceData : Form
+    public partial class EditPriceData : RNBaseForm
     {
-        public Form1.CsvRow RowToEdit;
+        public override string thisObjectName { get { return "EditPriceData"; } }
 
-        public EditPriceData(Form1.CsvRow csvRow, List<string> commodities)
+        public CsvRow RowToEdit;
+
+        public EditPriceData(CsvRow csvRow, List<string> commodities)
         {
             InitializeComponent();
 
             RowToEdit = csvRow;
 
             tbEditSystem.Text        = RowToEdit.SystemName;
-            tbEditStation.Text       = RowToEdit.StationName.Substring(0,RowToEdit.StationName.IndexOf("[")-1);
+            tbEditStation.Text       = RowToEdit.StationID;
             cbEditCommodityName.Text = RowToEdit.CommodityName;
             nEditSell.Value          = RowToEdit.SellPrice;
             nEditBuy.Value           = RowToEdit.BuyPrice;
@@ -40,10 +43,10 @@ namespace RegulatedNoise
         {
             DialogResult = DialogResult.OK;
 
-            var returnValue = new Form1.CsvRow
+            var returnValue = new CsvRow
             {
                 SystemName = tbEditSystem.Text,
-                StationName = tbEditStation.Text + " ["+tbEditSystem.Text+"]",
+                StationID = tbEditStation.Text + " ["+tbEditSystem.Text+"]",
                 CommodityName = cbEditCommodityName.Text,
                 SellPrice = nEditSell.Value,
                 BuyPrice = nEditBuy.Value,

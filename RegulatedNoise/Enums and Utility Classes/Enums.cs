@@ -9,7 +9,6 @@ namespace RegulatedNoise
     public enum AppDelegateType
     {
         AddEventToLog,
-        UpdateSystemNameLiveFromLog,
         ChangeGridSort,
         MaximizeWindow
     }
@@ -20,7 +19,9 @@ namespace RegulatedNoise
         Webserver,
         Ocr,
         EddnSubscriber,
-        App
+        App, 
+        Exception,
+        FileScanner
     }
 
     public enum StationHasBlackMarket
@@ -36,4 +37,19 @@ namespace RegulatedNoise
         Medium,
         Large
     }
+
+    public enum enLanguage
+    {
+        eng,
+        ger,
+        fra
+    }
+
+    public enum enCommodityLevel
+    {
+        LOW  = 0,
+        MED  = 1,
+        HIGH = 2
+    }
+
 }

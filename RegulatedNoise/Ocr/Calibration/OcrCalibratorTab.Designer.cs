@@ -35,6 +35,7 @@
             this.tb_fov = new System.Windows.Forms.TextBox();
             this.label2 = new System.Windows.Forms.Label();
             this.pl_calibrationWindow = new System.Windows.Forms.Panel();
+            this.lblWarning = new System.Windows.Forms.Label();
             this.tb_description = new System.Windows.Forms.TextBox();
             this.pb_example = new System.Windows.Forms.PictureBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -80,7 +81,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(301, 9);
+            this.label1.Location = new System.Drawing.Point(434, 9);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(60, 13);
             this.label1.TabIndex = 2;
@@ -88,7 +89,7 @@
             // 
             // tb_resolution
             // 
-            this.tb_resolution.Location = new System.Drawing.Point(367, 6);
+            this.tb_resolution.Location = new System.Drawing.Point(500, 6);
             this.tb_resolution.Name = "tb_resolution";
             this.tb_resolution.ReadOnly = true;
             this.tb_resolution.Size = new System.Drawing.Size(75, 20);
@@ -99,7 +100,7 @@
             // tb_fov
             // 
             this.tb_fov.Enabled = false;
-            this.tb_fov.Location = new System.Drawing.Point(485, 6);
+            this.tb_fov.Location = new System.Drawing.Point(618, 6);
             this.tb_fov.Name = "tb_fov";
             this.tb_fov.ReadOnly = true;
             this.tb_fov.Size = new System.Drawing.Size(75, 20);
@@ -112,7 +113,7 @@
             this.label2.AutoSize = true;
             this.label2.Enabled = false;
             this.label2.ForeColor = System.Drawing.SystemColors.GrayText;
-            this.label2.Location = new System.Drawing.Point(448, 9);
+            this.label2.Location = new System.Drawing.Point(581, 9);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(31, 13);
             this.label2.TabIndex = 4;
@@ -121,11 +122,24 @@
             // pl_calibrationWindow
             // 
             this.pl_calibrationWindow.AutoScroll = true;
+            this.pl_calibrationWindow.Controls.Add(this.lblWarning);
             this.pl_calibrationWindow.Controls.Add(this.pb_calibratorBox);
             this.pl_calibrationWindow.Location = new System.Drawing.Point(4, 36);
             this.pl_calibrationWindow.Name = "pl_calibrationWindow";
             this.pl_calibrationWindow.Size = new System.Drawing.Size(763, 468);
             this.pl_calibrationWindow.TabIndex = 6;
+            // 
+            // lblWarning
+            // 
+            this.lblWarning.AutoSize = true;
+            this.lblWarning.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblWarning.Location = new System.Drawing.Point(58, 175);
+            this.lblWarning.Name = "lblWarning";
+            this.lblWarning.Size = new System.Drawing.Size(654, 50);
+            this.lblWarning.TabIndex = 2;
+            this.lblWarning.Text = "No calibration possible because no display data has loaded. \r\nPlease check the ac" +
+    "cess to the ED display data.";
+            this.lblWarning.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // tb_description
             // 
@@ -194,7 +208,7 @@
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(583, 9);
+            this.label5.Location = new System.Drawing.Point(716, 9);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(193, 13);
             this.label5.TabIndex = 14;
@@ -288,6 +302,7 @@
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.PictureBox pb_calibratorMagnifier;
         private System.Windows.Forms.Button btn_calibration_reset;
+        public System.Windows.Forms.Label lblWarning;
 
 
     }

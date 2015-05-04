@@ -18,7 +18,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DefineConstants>TRACE;DEBUG</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -28,9 +28,46 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
+    <DefineConstants>TRACE;DukeJones</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug DJ|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug DJ\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;DukeJones </DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug_Live|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>F:\Games\ED\sonstiges\RegulatedNoise.v1.81\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;DukeJones</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug DJ ep|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug DJ ep\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;DukeJones ep_Debug1</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>RegulatedNoise.Program</StartupObject>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="clrzmq">
@@ -56,14 +93,82 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppConfig.cs" />
+    <Compile Include="Brainerous Pixeltest\EBPixeltest.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Brainerous Pixeltest\EBPixeltest.Designer.cs">
+      <DependentUpon>EBPixeltest.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DialogBox\CbtHook.cs" />
+    <Compile Include="DialogBox\DialogBox.cs" />
+    <Compile Include="DialogBox\Win32API.cs" />
+    <Compile Include="DialogBox\WindowsHook.cs" />
+    <Compile Include="DialogBox\WndProcRetHook.cs" />
+    <Compile Include="EDDB_Data\EDCommodities.cs" />
+    <Compile Include="EDDB_Data\EDCategory.cs" />
+    <Compile Include="EDDB_Data\EDCommodityListView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EDDB_Data\EDCommodityListView.Designer.cs">
+      <DependentUpon>EDCommodityListView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="EDDB_Data\EDCommodityView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EDDB_Data\EDCommodityView.Designer.cs">
+      <DependentUpon>EDCommodityView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="EDDB_Data\EDStations.cs" />
+    <Compile Include="EDDB_Data\EDStationView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="EDDB_Data\EDStationView.designer.cs">
+      <DependentUpon>EDStationView.cs</DependentUpon>
+    </Compile>
+    <Compile Include="EDDB_Data\EDSystems.cs" />
+    <Compile Include="EDDB_Data\EDMilkyway.cs" />
+    <Compile Include="EDDB_Data\Listing.cs" />
+    <Compile Include="Enums and Utility Classes\Controls_ext.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Enums and Utility Classes\CsvRow.cs" />
+    <Compile Include="Enums and Utility Classes\Extensions.cs" />
+    <Compile Include="Enums and Utility Classes\centralizedErrorhandler.cs" />
+    <Compile Include="Enums and Utility Classes\dsCommodities.cs">
+      <DependentUpon>dsCommodities.xsd</DependentUpon>
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Enums and Utility Classes\dsCommodities.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>dsCommodities.xsd</DependentUpon>
+    </Compile>
     <Compile Include="Elite Dangerous Specifics\EdLogLine.cs" />
     <Compile Include="Elite Dangerous Specifics\EdLogWatcher.cs" />
     <Compile Include="Enums and Utility Classes\EddnPublisherVersionStats.cs" />
+    <Compile Include="Enums and Utility Classes\InputBox.cs" />
+    <Compile Include="Enums and Utility Classes\ObjectCompare.cs" />
+    <Compile Include="Enums and Utility Classes\PerformanceTimer.cs" />
+    <Compile Include="Enums and Utility Classes\RNBaseForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Enums and Utility Classes\RNBaseForm.Designer.cs">
+      <DependentUpon>RNBaseForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Enums and Utility Classes\RNGraphics.cs" />
+    <Compile Include="Enums and Utility Classes\SerializableDictionary.cs" />
+    <Compile Include="Enums and Utility Classes\StationHistory.cs" />
     <Compile Include="MRmPTestTab\MRmPTestTab.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="MRmPTestTab\MRmPTestTab.Designer.cs">
       <DependentUpon>MRmPTestTab.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Brainerous Pixeltest\Picturedata.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Brainerous Pixeltest\Picturedata.Designer.cs">
+      <DependentUpon>Picturedata.cs</DependentUpon>
     </Compile>
     <Compile Include="Ocr\Calibration\CalibrationPoint.cs" />
     <Compile Include="CommodityDirectory.cs" />
@@ -113,6 +218,12 @@
     </Compile>
     <Compile Include="Enums and Utility Classes\ListViewItemComparer.cs" />
     <Compile Include="Ocr.cs" />
+    <Compile Include="Ocr\Calibration\FilterTest.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Ocr\Calibration\FilterTest.Designer.cs">
+      <DependentUpon>FilterTest.cs</DependentUpon>
+    </Compile>
     <Compile Include="Ocr\Calibration\OcrCalibrator.cs" />
     <Compile Include="Ocr\Calibration\OcrCalibratorTab.cs">
       <SubType>UserControl</SubType>
@@ -121,17 +232,49 @@
       <DependentUpon>OcrCalibratorTab.cs</DependentUpon>
     </Compile>
     <Compile Include="Program.cs" />
+    <Compile Include="ProgressView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ProgressView.Designer.cs">
+      <DependentUpon>ProgressView.cs</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Enums and Utility Classes\SortableBindingList.cs" />
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="SplashScreenForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SplashScreenForm.Designer.cs">
+      <DependentUpon>SplashScreenForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Station.cs" />
     <Compile Include="ObjectDirectory.cs" />
     <Compile Include="StationDirectory.cs" />
     <Compile Include="Webserver.cs" />
+    <EmbeddedResource Include="Brainerous Pixeltest\EBPixeltest.resx">
+      <DependentUpon>EBPixeltest.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EDDB_Data\EDCommodityListView.resx">
+      <DependentUpon>EDCommodityListView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EDDB_Data\EDCommodityView.resx">
+      <DependentUpon>EDCommodityView.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="EDDB_Data\EDStationView.resx">
+      <DependentUpon>EDStationView.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="EditOcrResults.resx">
       <DependentUpon>EditOcrResults.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="EditPriceData.resx">
       <DependentUpon>EditPriceData.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Enums and Utility Classes\RNBaseForm.resx">
+      <DependentUpon>RNBaseForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
@@ -146,19 +289,26 @@
     <EmbeddedResource Include="MRmPTestTab\MRmPTestTab.resx">
       <DependentUpon>MRmPTestTab.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Brainerous Pixeltest\Picturedata.resx">
+      <DependentUpon>Picturedata.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Ocr\Calibration\FilterTest.resx">
+      <DependentUpon>FilterTest.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Ocr\Calibration\OcrCalibratorTab.resx">
       <DependentUpon>OcrCalibratorTab.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="ProgressView.resx">
+      <DependentUpon>ProgressView.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
       <SubType>Designer</SubType>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <Compile Include="Properties\Resources.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
     <Compile Include="Enums and Utility Classes\Enums.cs" />
+    <None Include="bin\Debug DJ\OCR Correction Images\ff8384ca-c5e4-4642-a19a-0d1adc256018.png" />
+    <None Include="bin\Debug DJ\OCR Correction Images\fefa1584-8397-48a7-9a96-759ea434b412.png" />
     <Content Include="Brainerous\bz2.pyd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -194,6 +344,7 @@
     </Content>
     <Content Include="Brainerous\nn_training.exe.manifest">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
     </Content>
     <Content Include="Brainerous\numpy.core.multiarray.pyd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -480,9 +631,37 @@
     <Content Include="Brainerous\_win32sysloader.pyd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Data\elite.json">
+    <Content Include="Data\Commodities.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="SplashScreenForm.resx">
+      <DependentUpon>SplashScreenForm.cs</DependentUpon>
+    </EmbeddedResource>
+    <None Include="Brainerous\scipy.linalg._cblas.pyd" />
+    <None Include="Brainerous\scipy.linalg._clapack.pyd" />
+    <None Include="Data\commodities.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\stations.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\stations_lite.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Data\systems.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Enums and Utility Classes\dsCommodities.xsc">
+      <DependentUpon>dsCommodities.xsd</DependentUpon>
+    </None>
+    <None Include="Enums and Utility Classes\dsCommodities.xsd">
+      <SubType>Designer</SubType>
+      <Generator>MSDataSetGenerator</Generator>
+      <LastGenOutput>dsCommodities.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="Enums and Utility Classes\dsCommodities.xss">
+      <DependentUpon>dsCommodities.xsd</DependentUpon>
+    </None>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
@@ -493,8 +672,8 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <None Include="Data\Station.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    <None Include="tessdata\big.traineddata">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Include="tessdata\eng.traineddata">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -590,6 +769,14 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <EmbeddedResource Include="Resources\m.png" />
+    <Compile Include="Enums and Utility Classes\enumBindTo.cs" />
+    <Content Include="Json\Bin\Net45\Newtonsoft.Json.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="Resources\SampleTooHigh.png" />
+    <None Include="Resources\SampleTooLow.png" />
+    <None Include="Resources\PayPalDonate.jpg" />
+    <None Include="Resources\RNSplash.png" />
     <Content Include="x64\liblept168.dll">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -603,16 +790,15 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Brainerous\images\" />
-    <Folder Include="Brainerous\nn_training_images\already_processed\" />
-    <Folder Include="Brainerous\nn_training_images\split_training_images\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\EdClasses\EdClasses.csproj">
       <Project>{236a934b-5543-4751-baa2-018dfa825271}</Project>
       <Name>EdClasses</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Service References\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

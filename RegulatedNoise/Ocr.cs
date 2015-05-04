@@ -11,6 +11,8 @@ using System.Drawing.Imaging;
 using Tesseract;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using RegulatedNoise.EDDB_Data;
+using RegulatedNoise.Enums_and_Utility_Classes;
 
 namespace RegulatedNoise
 {
@@ -29,8 +31,9 @@ namespace RegulatedNoise
         private readonly SingleThreadLogger _logger;
         private Levenshtein _levenshtein = new Levenshtein();
         private TextInfo _textInfo = new CultureInfo("en-US", false).TextInfo;
+        private EBPixeltest PixelTest;
 
-        Bitmap _bTrimmedHeader, _bTrimmed, _bOriginal, _bOriginalClone;
+        Bitmap _bTrimmedHeader, _bTrimmed_4_OCR, _bOriginal, _bOriginalClone, _bTrimmed_4_View;
 
         public Ocr(Form1 callingForm)
         {
@@ -41,6 +44,7 @@ namespace RegulatedNoise
 
         public void ScreenshotCreated(string filePath, string systemAtTimeOfScreenshot)
         {
+
             SystemAtTimeOfScreenshot = systemAtTimeOfScreenshot;
 
             Debug.WriteLine("Screenshot created: OCR is "+Working);
@@ -61,6 +65,9 @@ namespace RegulatedNoise
 
             if (_bOriginal != null) _bOriginal.Dispose();
             if (_bOriginalClone != null) _bOriginalClone.Dispose();
+            if (_bTrimmed_4_View != null) _bTrimmed_4_View.Dispose();
+            if (_bTrimmed_4_OCR != null) _bTrimmed_4_OCR.Dispose();
+            if (_bTrimmedHeader != null) _bTrimmedHeader.Dispose();
 
             // Well, we can get the bitmap without locking its file, like this... maybe it will help 
             using (Stream s = File.OpenRead(CurrentScreenshot))
@@ -82,114 +89,105 @@ namespace RegulatedNoise
             }
             _calibrationPoints = _callingForm.UpdateOriginalImage(_bAnotherClone);
 
-            var trim = new Rectangle(_calibrationPoints[2].X, _calibrationPoints[2].Y,
-                _calibrationPoints[10].X - _calibrationPoints[2].X, _calibrationPoints[11].Y - _calibrationPoints[2].Y);
+            // get the area of the commodity data
+            var trim_4_CommodityArea = new Rectangle(_calibrationPoints[2].X ,  _calibrationPoints[2].Y,
+                                                     _calibrationPoints[10].X - _calibrationPoints[2].X, 
+                                                     _calibrationPoints[11].Y - _calibrationPoints[2].Y);
 
-            if (_bTrimmed != null) _bTrimmed.Dispose();
-            _bTrimmed = Crop(_bOriginalClone, trim);
+            // RNGraphics.Crop image to the commodity area
+            _bTrimmed_4_OCR = RNGraphics.Crop(_bOriginalClone, trim_4_CommodityArea);
 
+            // save the still colored area for viewing reasons
+            _bTrimmed_4_View = (Bitmap)(_bTrimmed_4_OCR.Clone());
+
+            // set all dark colors to black - this removes all crap
+            _bTrimmed_4_OCR = RNGraphics.changeColour(_bTrimmed_4_OCR, Color.Black, Color.Black, Form1.RegulatedNoiseSettings.GUIColorCutoffLevel , RNGraphics.enPixelCompare.pc_RGB_all);
+
+            // find automatically the textlines in the commodity area 
             var textRowLocations = new List<Tuple<int, int>>();
-
             var nextLine = 0;
-
-            while (nextLine < _bTrimmed.Height - 1)
+            while (nextLine < _bTrimmed_4_OCR.Height - 1)
             {
                 int startLine = -1, endLine = -1;
-                for (int i = nextLine; i < _bTrimmed.Height - 1; i++)
+                for (int i = nextLine; i < _bTrimmed_4_OCR.Height - 1; i++)
                 {
                     nextLine = i + 1;
-
-
                     bool hasOrangePixel;
-
-                    using (Bitmap singlePixelRow = Crop(_bTrimmed, new Rectangle(0, i, _bTrimmed.Width, 1)))
+                    using (Bitmap singlePixelRow = RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(0, i, _bTrimmed_4_OCR.Width, 1)))
                     {
-                        hasOrangePixel = HasOrangePixel(singlePixelRow);
+                        hasOrangePixel = RNGraphics.hasGUIColoredPixel(singlePixelRow);
                     }
                     //Debug.WriteLine(i + " of " + bTrimmed.Height + ": " + hasOrangePixel);
                     if (endLine == -1 && !hasOrangePixel)
                         startLine = i;
                     else
-                    {
                         if (hasOrangePixel)
                             endLine = i + 1;
                         else
                             break;
-                    }
-
 
                 }
                 if (startLine != -1 && endLine != -1)
                     textRowLocations.Add(new Tuple<int, int>(startLine, endLine));
             }
 
+            // get the area of the header
+            var trim_4_Header = new Rectangle(_calibrationPoints[0].X,   _calibrationPoints[0].Y,
+                                              _calibrationPoints[10].X - _calibrationPoints[0].X, 
+                                              _calibrationPoints[1].Y  - _calibrationPoints[0].Y);
 
+            // RNGraphics.Crop image to the header area and preprocess for OCR
+            _bTrimmedHeader = RNGraphics.PreprocessScreenshot(RNGraphics.Crop(_bOriginalClone, trim_4_Header),1, Form1.RegulatedNoiseSettings.GUIColorCutoffLevel);
 
+            // now process screenshot for OCR and Elitebrainerous 
+            _bTrimmed_4_OCR  = RNGraphics.PreprocessScreenshot(_bTrimmed_4_OCR,1, Form1.RegulatedNoiseSettings.GUIColorCutoffLevel);
 
-            trim = new Rectangle(_calibrationPoints[0].X, _calibrationPoints[0].Y,
-                _calibrationPoints[10].X - _calibrationPoints[0].X, _calibrationPoints[1].Y - _calibrationPoints[0].Y);
-
-            if(_bTrimmedHeader != null) _bTrimmedHeader.Dispose();
-
-            _bTrimmedHeader = PreprocessScreenshot(Crop(_bOriginalClone, trim));
-
-            _bTrimmed = PreprocessScreenshot(_bTrimmed);
-
-            _callingForm.UpdateTrimmedImage(_bTrimmed, _bTrimmedHeader);
+            // show preprocessed parts on the GUI
+            _callingForm.UpdateTrimmedImage(_bTrimmed_4_OCR, _bTrimmedHeader);
 
             int min=100, max=0;
 
-            if (textRowLocations.Count < 1)
+            if (textRowLocations.Count > 0)
             {
-                _logger.Log("No text row locations found...");
-                _callingForm.GenericSingleParameterMessage(null, AppDelegateType.MaximizeWindow);
-                MessageBox.Show(
-                    "Couldn't find any text row locations to process.  Have you changed the UI somehow?  You might like to investigate the \"I've changed the UI colour\" button on the OCR Calibration tab...");
-            }
-
-            else
-            {
-
+                // check if the last line is complete or RNGraphics.Cropped -> if it's RNGraphics.Cropped we delete it
                 var finalRowLocation = textRowLocations[textRowLocations.Count - 1];
 
                 foreach (var x in textRowLocations)
-                {
                     if (x.Item1 != finalRowLocation.Item1)
                     {
-                        if (min > x.Item2 - x.Item1) min = x.Item2 - x.Item1;
-                        if (max < x.Item2 - x.Item1) max = x.Item2 - x.Item1;
+                        if (min > x.Item2 - x.Item1) 
+                            min = x.Item2 - x.Item1;
+
+                        if (max < x.Item2 - x.Item1) 
+                            max = x.Item2 - x.Item1;
                     }
-                }
 
                 if (finalRowLocation.Item2 - finalRowLocation.Item1 < (min - 2))
-                {
                     textRowLocations.RemoveAt(textRowLocations.Count - 1);
-                }
-                //if(textRowLocations.ElementAt(textRowLocations.Count))
-                //textRowLocations[textRow].
+ 
             }
-            PerformOcr(textRowLocations);
-        }
 
-        public Bitmap PreprocessScreenshot(Bitmap b)
-        {
-            b = MakeGrayscale(b);
-            b = MakeBrighter(b, -.10f);
-            b = Contrast(b, 100);
-            b = Contrast(b, 50);
-            b = Invert(b);
-            return b;
+            Debug.Print("process screenshot " + screenshot);
+            PerformOcr(textRowLocations);
         }
 
         public void PerformOcr(List<Tuple<int, int>> textRowLocations)
         {
+            int DarkPixels;
             var conv = new BitmapToPixConverter();
 
             Pix p = conv.Convert(_bTrimmedHeader);
 
             string headerResult;
 
-            using (var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default))
+            // delete the old brainerous images - otherwise Brainerous will process older but not relevant images too
+            if (Directory.Exists(@".\Brainerous\images"))
+                foreach (string file in Directory.GetFiles(@".\\Brainerous\\images", "*.*"))
+                    File.Delete(file);
+            else
+                Directory.CreateDirectory("./Brainerous/images");
+
+            using (var engine = new TesseractEngine(@"./tessdata", Form1.RegulatedNoiseSettings.TraineddataFile, EngineMode.Default))
             {
                 using (var page = engine.Process(p))
                 {
@@ -198,42 +196,56 @@ namespace RegulatedNoise
                 }
             }
 
-            var matchesInStationReferenceList =
-                _callingForm.StationReferenceList.Where(x => x.System == SystemAtTimeOfScreenshot.ToUpper()).OrderBy(x => _levenshtein.LD2(headerResult, x.Name)).ToList();
+            string[] StationsInSystem = _callingForm.myMilkyway.getStationNames(SystemAtTimeOfScreenshot);
+            string headerResult_temp = StationsInSystem.FirstOrDefault(x => x.Equals(_callingForm.tbCurrentStationinfoFromLogs.Text, StringComparison.InvariantCultureIgnoreCase));
 
-            var q = _callingForm.StationReferenceList.Where(x => x.Name.Contains("'"));
+            if(headerResult_temp == null)
+            { 
+                // station not found in database
+                var matchesInStationReferenceList = StationsInSystem.OrderBy(x => _levenshtein.LD2(headerResult, x)).ToList();
 
-            if(matchesInStationReferenceList.Count > 0)
-            {
-                var ld = _levenshtein.LD2(headerResult, matchesInStationReferenceList[0].Name.ToUpper());
-                if (ld < 5)
-                    headerResult = matchesInStationReferenceList[0].Name.ToUpper();
+                if(matchesInStationReferenceList.Count > 0)
+                {
+                    var ld = _levenshtein.LD2(headerResult, matchesInStationReferenceList[0].ToUpper());
+                
+                    // this depends on the length of the word - this factor works really good
+                    double LevenshteinLimit = Math.Round((matchesInStationReferenceList[0].Length * 0.7), 0);
+
+                    if (ld <= LevenshteinLimit)
+                        headerResult = matchesInStationReferenceList[0].ToUpper();
+                }
             }
+            else
+            {
+                headerResult = headerResult_temp;
+            }
+
+            // show station on GUI
 
             _callingForm.DisplayResults(headerResult);
             
-            var commodityColumnText = new string[textRowLocations.Count(), 8]; ;
-            var originalBitmaps = new Bitmap[textRowLocations.Count(),8];
-            var originalBitmapConfidences = new float[textRowLocations.Count(), 8];
-            var rowIds = new string[textRowLocations.Count()];
-
-            var rowCtr = 0;
-
-            var bTrimmedContrast = Contrast(MakeGrayscale(MakeBrighter((Bitmap)(_bTrimmed.Clone()),.25f)),60);
-
+            var commodityColumnText         = new string[textRowLocations.Count(), 8]; 
+            var originalBitmaps             = new Bitmap[textRowLocations.Count(),8];
+            var originalBitmapConfidences   = new float[textRowLocations.Count(), 8];
+            var rowIds                      = new string[textRowLocations.Count()];
+            var rowCtr                      = 0;
+			
             var bitmapCtr = 0;
-            
+
             foreach (var row in textRowLocations)
             {
                 int startRow = row.Item1 - 3;
                 int heightRow = row.Item2 - row.Item1 + 6;
 
-                if (startRow < 0) startRow = 0;
-                if (heightRow + startRow > bTrimmedContrast.Height) heightRow = bTrimmedContrast.Height - startRow;
+                if (startRow < 0) 
+                    startRow = 0;
+
+                if (heightRow + startRow > _bTrimmed_4_OCR.Height) 
+                    heightRow = _bTrimmed_4_OCR.Height - startRow;
 
                 // We'll use this later to identify the right correction image
                 rowIds[rowCtr] = Guid.NewGuid().ToString();
-                using (Bitmap b = Crop(bTrimmedContrast, new Rectangle(0, startRow, bTrimmedContrast.Width, heightRow)))
+                using (Bitmap b = RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(0, startRow, _bTrimmed_4_OCR.Width, heightRow)))
                 {
                     b.Save(".//OCR Correction Images//" + rowIds[rowCtr] + ".png");
                 }
@@ -245,27 +257,35 @@ namespace RegulatedNoise
                     switch(columnCounter)
                     {
                         case 0:
+                            // commodity
                             left = 0; width = _calibrationPoints[3].X - _calibrationPoints[2].X;
                             break;
                         case 1:
+                            // sell
                             left = _calibrationPoints[3].X - _calibrationPoints[2].X; width = _calibrationPoints[4].X - _calibrationPoints[3].X;
                             break;
                         case 2:
+                            //buy
                             left = _calibrationPoints[4].X - _calibrationPoints[2].X; width = _calibrationPoints[5].X - _calibrationPoints[4].X;
                             break;
                         case 3:
+                            // freight
                             left = _calibrationPoints[5].X - _calibrationPoints[2].X; width = _calibrationPoints[6].X - _calibrationPoints[5].X;
                             break;
                         case 4:
+                            // demand
                             left = _calibrationPoints[6].X - _calibrationPoints[2].X; width = _calibrationPoints[7].X - _calibrationPoints[6].X;
                             break;
                         case 5:
+                            // demand level
                             left = _calibrationPoints[7].X - _calibrationPoints[2].X; width = _calibrationPoints[8].X - _calibrationPoints[7].X;
                             break;
                         case 6:
+                            // supply 
                             left = _calibrationPoints[8].X - _calibrationPoints[2].X; width = _calibrationPoints[9].X - _calibrationPoints[8].X;
                             break;
                         case 7:
+                            // supply level
                             left = _calibrationPoints[9].X - _calibrationPoints[2].X; width = _calibrationPoints[10].X - _calibrationPoints[9].X;
                             break;
                         default:
@@ -276,78 +296,114 @@ namespace RegulatedNoise
                     left = left + fudgeFactor;
                     width = width - fudgeFactor;
 
-                    if (columnCounter != 0 && columnCounter != 5 && columnCounter != 7)
-                    {   //If it's a numeric column write it out for Brainerous to process later
-                        var brainerousOut = Crop(bTrimmedContrast,
-                            new Rectangle(left, startRow, width, heightRow));
+                    DarkPixels = 0;
 
-                        if (!Directory.Exists("./Brainerous/images"))
-                            Directory.CreateDirectory("./Brainerous/images");
+                    if (_callingForm.cbCheckAOne.Checked)
+                    {
+                        if (PixelTest == null)
+                            PixelTest = new EBPixeltest();
 
-                        brainerousOut.Save("./Brainerous/images/" + bitmapCtr + ".png");
-                        bitmapCtr++;
+                        if (columnCounter == 3)
+                        {
+                            var brainerousOut = RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left, startRow, width, heightRow));
+
+                            // check how much dark pixels are on the bitmap
+                            for (int i = 0; i < brainerousOut.Height; i++)
+                                for (int j = 0; j < brainerousOut.Width; j++)
+                                    if (brainerousOut.GetPixel(j, i).GetBrightness() < Form1.RegulatedNoiseSettings.EBPixelThreshold)
+                                        DarkPixels++;
+
+                            PixelTest.addPicture(brainerousOut, DarkPixels);
+                        }
                     }
                     else
-                    {   // It's a text column, we'll use Tesseract
+                    {
+                        //  RNGraphics.Crop a little bit more form the left border because sometimes if theres 
+                        // the line of the table it was recognized as "1" or "7"
+                        left += 10;
+                        width -= 10;
 
-                        // Prepare some different versions of the bitmap, we will take the best result
-                        var c = new Bitmap[7];
-                        c[0] = (Crop(bTrimmedContrast, new Rectangle(left, startRow, width, heightRow)));
-                        c[1] = (Crop(bTrimmedContrast, new Rectangle(left + 1, startRow, width, heightRow)));
-                        c[2] = (Crop(bTrimmedContrast, new Rectangle(left - 1, startRow, width, heightRow)));
-                        c[3] = (Crop(bTrimmedContrast, new Rectangle(left, startRow - 1, width, heightRow)));
-                        c[4] = (Crop(bTrimmedContrast, new Rectangle(left + 1, startRow - 1, width, heightRow)));
-                        c[5] = (Crop(bTrimmedContrast, new Rectangle(left - 1, startRow - 1, width, heightRow)));
-                        c[6] = (Crop(bTrimmedContrast, new Rectangle(left, startRow + 2, width, heightRow - 2)));
+                        if (columnCounter != 0 && columnCounter != 5 && columnCounter != 7)
+                        {   //If it's a numeric column write it out for Brainerous to process later
+                            var brainerousOut = RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left, startRow, width, heightRow));
 
-                        var t = new string[c.Length];
-                        var cf = new float[c.Length];
-
-                        using (var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default))
-                        {
-                            for (int i = 0; i < c.Length; i++)
+                            if (Form1.RegulatedNoiseSettings.EBPixelAmount > 0)
                             {
-                                t[i] = AnalyseFrameUsingTesseract((Bitmap)(c[i].Clone()), engine, out cf[i]);
+                                // check how much dark pixels are on the bitmap -> we process only bitmaps 
+                                // with something on it (minimum one digit supposed, a "1" hat about 25 pixels in default 1920x1200)
+                                for (int i = 0; i < brainerousOut.Height; i++)
+                                    for (int j = 0; j < brainerousOut.Width; j++)
+                                        if (brainerousOut.GetPixel(j, i).GetBrightness() < Form1.RegulatedNoiseSettings.EBPixelThreshold)
+                                            DarkPixels++;
                             }
+
+                            if (DarkPixels >= Form1.RegulatedNoiseSettings.EBPixelAmount)
+                                brainerousOut.Save("./Brainerous/images/" + bitmapCtr + ".png");
+
+                            bitmapCtr++;
                         }
+                        else
+                        {   // It's a text column, we'll use Tesseract
 
-                        int result = 0;
-                        float confidence = cf[0];
+                            // Prepare some different versions of the bitmap, we will take the best result
+                            var c = new Bitmap[7];
+                            c[0] = (RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left, startRow, width, heightRow)));
+                            c[1] = (RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left + 1, startRow, width, heightRow)));
+                            c[2] = (RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left - 1, startRow, width, heightRow)));
+                            c[3] = (RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left, startRow - 1, width, heightRow)));
+                            c[4] = (RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left + 1, startRow - 1, width, heightRow)));
+                            c[5] = (RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left - 1, startRow - 1, width, heightRow)));
+                            c[6] = (RNGraphics.Crop(_bTrimmed_4_OCR, new Rectangle(left, startRow + 2, width, heightRow - 2)));
 
-                        for (int i = 1; i < c.Length; i++)
-                        {
-                            if (confidence < cf[i])
-                            { result = i; confidence = cf[i]; }
-                        }
+                            var t = new string[c.Length];
+                            var cf = new float[c.Length];
 
-                        originalBitmaps[rowCtr, columnCounter] = (Bitmap)(c[result].Clone());
-
-                        switch (columnCounter)
-                        {
-                            //bodges for number columns
-                            case 1:
-                            case 2:
-                            case 3:
-                                t[result] = t[result].Replace(" ", "").Replace("O", "0").Replace("I", "1").Replace("'", "");
-                                t[result] = System.Text.RegularExpressions.Regex.Replace(t[result], @"[a-zA-Z\s]+", string.Empty); // remove any alphas that remain
-                                break;
-                            case 5:
-                            case 7:
-                                t[result] = t[result].Replace(" ", "").Replace("-", "");
-                                if (t[result] == "HIGH" || t[result] == "MED" || t[result] == "LOW")
+                            using (var engine = new TesseractEngine(@"./tessdata", Form1.RegulatedNoiseSettings.TraineddataFile, EngineMode.Default))
+                            {
+                                for (int i = 0; i < c.Length; i++)
                                 {
-                                    cf[result] = 1;
+                                    t[i] = AnalyseFrameUsingTesseract((Bitmap)(c[i].Clone()), engine, out cf[i]);
                                 }
-                                break;
+                            }
+
+                            int result = 0;
+                            float confidence = cf[0];
+
+                            for (int i = 1; i < c.Length; i++)
+                            {
+                                if (confidence < cf[i])
+                                { result = i; confidence = cf[i]; }
+                            }
+
+                            originalBitmaps[rowCtr, columnCounter] = (Bitmap)(c[result].Clone());
+
+                            switch (columnCounter)
+                            {
+                                //bodges for number columns
+                                case 1:
+                                case 2:
+                                case 3:
+                                    t[result] = t[result].Replace(" ", "").Replace("O", "0").Replace("I", "1").Replace("'", "");
+                                    t[result] = System.Text.RegularExpressions.Regex.Replace(t[result], @"[a-zA-Z\s]+", string.Empty); // remove any alphas that remain
+                                    break;
+                                case 5:
+                                case 7:
+                                    t[result] = t[result].Replace(" ", "").Replace("-", "");
+                                    if (t[result] == "HIGH" || t[result] == "MED" || t[result] == "LOW")
+                                    {
+                                        cf[result] = 1;
+                                    }
+                                    break;
+                            }
+                            if ((columnCounter == 5 && t[result].Contains("ENTER")) ||
+                                (columnCounter == 6 && (t[result].Contains("NGAR") || t[result].Contains("SURFACE"))))
+                            {
+                                t[result] = "";
+                                cf[result] = 1;
+                            }
+                            commodityColumnText[rowCtr, columnCounter] += t[result];
+                            originalBitmapConfidences[rowCtr, columnCounter] = cf[result];
                         }
-                        if ((columnCounter == 5 && t[result].Contains("ENTER")) ||
-                            (columnCounter == 6 && (t[result].Contains("NGAR") || t[result].Contains("SURFACE"))))
-                        {
-                            t[result] = "";
-                            cf[result] = 1;
-                        }
-                        commodityColumnText[rowCtr, columnCounter] += t[result];
-                        originalBitmapConfidences[rowCtr, columnCounter] = cf[result];
                     }
 
                     columnCounter++;
@@ -355,59 +411,100 @@ namespace RegulatedNoise
                 rowCtr++;
             }
 
-            if (textRowLocations.Count > 0)
+            if (_callingForm.cbCheckAOne.Checked)
             {
-                // Call out to Brainerous to process the numeric bitmaps we saved earlier
-                var outputFromBrainerous = "";
-                var pr = new Process();
-                pr.StartInfo.UseShellExecute = false;
-                pr.StartInfo.CreateNoWindow = true;
-                pr.StartInfo.RedirectStandardOutput = true;
-                pr.StartInfo.FileName = "./Brainerous/nn_training.exe";
-                pr.StartInfo.WorkingDirectory = "./Brainerous/";
-                pr.Start();
-                outputFromBrainerous = pr.StandardOutput.ReadToEnd();
-                while (outputFromBrainerous.Contains("Failed to pad successfully"))
+                PixelTest.StartModal(_callingForm);
+
+            }
+            else
+            {
+                if (textRowLocations.Count > 0)
                 {
-                    var o2 = outputFromBrainerous.IndexOf("Failed to ");
-                    var o3 = outputFromBrainerous.Substring(0, o2);
-                    var o4 = outputFromBrainerous.Substring(o2).IndexOf("./images");
-                    var o5 = outputFromBrainerous.Substring(o2 + o4);
-                    outputFromBrainerous = o3 + "\r\n" + o5;
-                }
+                    // Call out to Brainerous to process the numeric bitmaps we saved earlier
+                    var outputFromBrainerous = "";
+                    var pr = new Process();
+                    pr.StartInfo.UseShellExecute = false;
+                    pr.StartInfo.CreateNoWindow = true;
+                    pr.StartInfo.RedirectStandardOutput = true;
+                    pr.StartInfo.FileName = "./Brainerous/nn_training.exe";
+                    pr.StartInfo.WorkingDirectory = "./Brainerous/";
+                    pr.Start();
+                    outputFromBrainerous = pr.StandardOutput.ReadToEnd();
 
-                pr.WaitForExit();
+                    while (outputFromBrainerous.Contains("Failed to pad successfully"))
+                    {
+                        var o2 = outputFromBrainerous.IndexOf("Failed to ");
+                        var o3 = outputFromBrainerous.Substring(0, o2);
+                        var o4 = outputFromBrainerous.Substring(o2).IndexOf("./images", StringComparison.InvariantCultureIgnoreCase);
 
-                var splitOutput = outputFromBrainerous.Replace("\r", "").Split('\n');
+                        // I had a string with "Failed to pad successfully" and only some trash behind but no "./images"
+                        // so "o4" was "-1" and this results in strange behaviour
+                        if (o4 > 0)
+                        {
+                            var o5 = outputFromBrainerous.Substring(o2 + o4);
+                            outputFromBrainerous = o3 + "\r\n" + o5;
+                        }
+                        else
+                        {
+                            outputFromBrainerous = o3;
+                        }
+                    }
 
-                // Load the result from Brainerous into the OCR output
-                for (var i = 0; i < textRowLocations.Count; i++)
-                {
-                    commodityColumnText[i, 1] = splitOutput[i*10 + 1];
-                    originalBitmaps[i, 1] = null;
-                    originalBitmapConfidences[i, 1] = 1;
-                    commodityColumnText[i, 2] = splitOutput[i*10 + 3];
-                    originalBitmaps[i, 2] = null;
-                    originalBitmapConfidences[i, 2] = 1;
-                    commodityColumnText[i, 3] = splitOutput[i*10 + 5];
-                    originalBitmaps[i, 3] = null;
-                    originalBitmapConfidences[i, 3] = 1;
-                    commodityColumnText[i, 4] = splitOutput[i*10 + 7];
-                    originalBitmaps[i, 4] = null;
-                    originalBitmapConfidences[i, 4] = 1;
-                    commodityColumnText[i, 6] = splitOutput[i*10 + 9];
-                    originalBitmaps[i, 6] = null;
-                    originalBitmapConfidences[i, 6] = 1;
+                    pr.WaitForExit();
+
+                    List<string> splitOutput = ((string[])outputFromBrainerous.Replace("\r", "").Split('\n')).ToList();
+
+                    for (var i = 0; i < (textRowLocations.Count * 10); i += 2)
+                    {
+                        string Filename = (i / 2).ToString() + ".png";
+                        if ((splitOutput.Count <= i) || (splitOutput[i].Length < 14) || (splitOutput[i].Substring(9) != Filename))
+                        {
+                            splitOutput.Insert(i, "./images/" + Filename);
+                            splitOutput.Insert(i + 1, "");
+                        }
+                    }
+
+
+                    // Load the result from Brainerous into the OCR output
+                    for (var i = 0; i < textRowLocations.Count; i++)
+                    {
+                        commodityColumnText[i, 1] = splitOutput[i * 10 + 1];
+                        originalBitmaps[i, 1] = null;
+                        originalBitmapConfidences[i, 1] = 1;
+                        commodityColumnText[i, 2] = splitOutput[i * 10 + 3];
+                        originalBitmaps[i, 2] = null;
+                        originalBitmapConfidences[i, 2] = 1;
+                        commodityColumnText[i, 3] = splitOutput[i * 10 + 5];
+                        originalBitmaps[i, 3] = null;
+                        originalBitmapConfidences[i, 3] = 1;
+                        commodityColumnText[i, 4] = splitOutput[i * 10 + 7];
+                        originalBitmaps[i, 4] = null;
+                        originalBitmapConfidences[i, 4] = 1;
+                        commodityColumnText[i, 6] = splitOutput[i * 10 + 9];
+                        originalBitmaps[i, 6] = null;
+                        originalBitmapConfidences[i, 6] = 1;
+
+                    }
                 }
             }
+
             _bOriginal.Dispose();
             _bOriginalClone.Dispose();
-            // Send the results for this screenshot back to the Form
-            _callingForm.DisplayCommodityResults(commodityColumnText, originalBitmaps, originalBitmapConfidences, rowIds, CurrentScreenshot);
+
+            if (_callingForm.cbCheckAOne.Checked)
+            {
+                _callingForm.setCheckbox(_callingForm.cbCheckAOne, false);
+                Form1.InstanceObject.clearOcrOutput();
+            }
+            else
+            {
+                // Send the results for this screenshot back to the Form
+                _callingForm.DisplayCommodityResults(commodityColumnText, originalBitmaps, originalBitmapConfidences, rowIds, CurrentScreenshot);
+            }
 
             // ...and if we've got any buffered screenshots waiting to be processed, process the next one
             if (ScreenshotBuffer.Count > 0)
-            {
+            {               
                 var screenshot = ScreenshotBuffer[0];
                 ScreenshotBuffer.Remove(screenshot);
                 ProcessNewScreenshot(screenshot);
@@ -419,7 +516,7 @@ namespace RegulatedNoise
         }
 
         private string StripPunctuationFromScannedText(string input)
-        {
+        {       
             return _textInfo.ToUpper(input.Replace("\n\n", "").Replace("-", "").Replace(".", "").Replace(",", ""));
         }
 
@@ -437,293 +534,5 @@ namespace RegulatedNoise
             return t1;
         }
 
-        #region Image-Processing Utilities
-        public Bitmap Crop(Bitmap b, Rectangle r)
-        {
-         // From http://stackoverflow.com/questions/734930/how-to-crop-an-image-using-c
-            if (r.Width < 1 || r.Height < 1)
-                Debug.WriteLine("Yikes!");
-            var nb = new Bitmap(r.Width, r.Height);
-            var g = Graphics.FromImage(nb);
-            g.DrawImage(b, -r.X, -r.Y);
-            return nb;
-        }
-
-        #region Deleted but might be useful
-        //private unsafe int GetAverageBitmapColor(Bitmap bm)
-        //{
-        //    var srcData = bm.LockBits(
-        //    new Rectangle(0, 0, bm.Width, bm.Height),
-        //    ImageLockMode.ReadOnly,
-        //    PixelFormat.Format32bppArgb);
-        //
-        //    int stride = srcData.Stride;
-        //
-        //    IntPtr Scan0 = srcData.Scan0;
-        //
-        //    long[] totals = new long[] { 0, 0, 0 };
-        //
-        //    long width = bm.Width;
-        //    long height = bm.Height;
-        //
-        //    unsafe
-        //    {
-        //        byte* p = (byte*)(void*)Scan0;
-        //
-        //        for (int y = 0; y < height; y++)
-        //        {
-        //            for (int x = 0; x < width; x++)
-        //            {
-        //                for (int color = 0; color < 3; color++)
-        //                {
-        //                    int idx = (y * stride) + x * 4 + color;
-        //
-        //                    totals[color] += p[idx];
-        //                }
-        //            }
-        //        }
-        //    }
-        //
-        //    int avgB = (int)(totals[0] / (width * height));
-        //    int avgG = (int)(totals[1] / (width * height));
-        //    int avgR = (int)(totals[2] / (width * height));
-        //    return avgR + avgG + avgB / 3;
-        //}
-        #endregion
-
-        // well, i guess it might not be orange any more...
-        private unsafe bool HasOrangePixel(Bitmap bm)
-        {
-            BitmapData srcData = bm.LockBits(
-            new Rectangle(0, 0, bm.Width, bm.Height),
-            ImageLockMode.ReadOnly,
-            PixelFormat.Format32bppArgb);
-
-            var stride = srcData.Stride;
-
-            var scan0 = srcData.Scan0;
-
-            long width = bm.Width;
-            long height = bm.Height;
-
-            var p = (byte*)(void*)scan0;
-
-            var uiColour = Form1.RegulatedNoiseSettings.UiColour;
-            int red = int.Parse(uiColour.Substring(1, 2), System.Globalization.NumberStyles.HexNumber);
-            int green = int.Parse(uiColour.Substring(3, 2), System.Globalization.NumberStyles.HexNumber);
-            int blue = int.Parse(uiColour.Substring(5, 2), System.Globalization.NumberStyles.HexNumber);
-            int lowRed = red - 64 < 0 ? 0 : red - 64;
-            int lowGreen = green - 64 < 0 ? 0 : green - 64;
-            int lowBlue = blue - 64 < 0 ? 0 : blue - 64;
-            int hiRed = red + 64 > 255 ? 255 : red + 64;
-            int hiGreen = green + 64 > 255 ? 255 : green + 64;
-            int hiBlue = blue + 64 > 255 ? 255 : blue + 64;
-
-            for (int y = 0; y < height; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    int idxB = 0, idxG = 0, idxR = 0;
-
-
-                    for (int colorIdx = 0; colorIdx < 3; colorIdx++)
-                    {
-                        int idx = (y * stride) + x * 4 + colorIdx;
-                        switch (colorIdx)
-                        {
-                            case 0:
-                                idxB = p[idx];
-                                break;
-                            case 1:
-                                idxG = p[idx];
-                                break;
-                            case 2:
-                                idxR = p[idx];
-                                break;
-                        }
-                    }
-
-
-
-                    // 0 = Blue, 1 = Green, 2= Red
-                    //if (idxB <= idxR / 2.5 && idxG >= idxR / 3.5 && idxG <= idxR / 1.8 && idxR >= 120)
-                    if(idxB >= lowBlue && idxB <= hiBlue && idxG >= lowGreen && idxG <= hiGreen && idxR >= lowRed && idxR <= hiRed)
-                    {
-                        //System.Diagnostics.Debug.WriteLine("Pixel "+ x);
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public static Bitmap MakeGrayscale(Bitmap original)
-        {
-        // From http://tech.pro/tutorial/660/csharp-tutorial-convert-a-color-image-to-grayscale
-            //create a blank bitmap the same size as original
-            var newBitmap = new Bitmap(original.Width, original.Height);
-
-            //get a graphics object from the new image
-            var g = Graphics.FromImage(newBitmap);
-
-            //create the grayscale ColorMatrix
-            ColorMatrix colorMatrix = new ColorMatrix(
-               new [] 
-      {
-         new [] {.3f, .3f, .3f, 0, 0},
-         new [] {.59f, .59f, .59f, 0, 0},
-         new [] {.11f, .11f, .11f, 0, 0},
-         new [] {0, 0, 0, 1f, 0},
-         new [] {0, 0, 0, 0, 1f}
-      });
-            //create some image attributes
-            var attributes = new ImageAttributes();
-
-            //set the color matrix attribute
-            attributes.SetColorMatrix(colorMatrix);
-
-            //draw the original image on the new image
-            //using the grayscale color matrix
-            g.DrawImage(original, new Rectangle(0, 0, original.Width, original.Height),
-               0, 0, original.Width, original.Height, GraphicsUnit.Pixel, attributes);
-
-            //dispose the Graphics object
-            g.Dispose();
-            return newBitmap;
-        }
-
-        public static Bitmap MakeBrighter(Bitmap original, float amount) // .25, -.45
-        {
-            //create a blank bitmap the same size as original
-            var newBitmap = new Bitmap(original.Width, original.Height);
-
-            //get a graphics object from the new image
-            var g = Graphics.FromImage(newBitmap);
-
-            //create the grayscale ColorMatrix
-            var colorMatrix = new ColorMatrix(
-               new float[][] 
-      {
-         new float[] {1, 0, 0, 0, 0},
-         new float[] {0, 1, 0, 0, 0},
-         new float[] {0, 0, 1, 0, 0},
-         new float[] {0, 0, 0, 1, 0},
-         new float[] {-amount, -amount, -amount, 0, 1}
-      });
-
-            //create some image attributes
-            var attributes = new ImageAttributes();
-
-            //set the color matrix attribute
-            attributes.SetColorMatrix(colorMatrix);
-
-            //draw the original image on the new image
-            //using the grayscale color matrix
-            g.DrawImage(original, new Rectangle(0, 0, original.Width, original.Height),
-               0, 0, original.Width, original.Height, GraphicsUnit.Pixel, attributes);
-
-            //dispose the Graphics object
-            g.Dispose();
-            return newBitmap;
-        }
-
-        public static Bitmap Invert(Bitmap original)
-        {
-            //create a blank bitmap the same size as original
-            Bitmap newBitmap = new Bitmap(original.Width, original.Height);
-
-            //get a graphics object from the new image
-            Graphics g = Graphics.FromImage(newBitmap);
-
-            //create the grayscale ColorMatrix
-            ColorMatrix colorMatrix = new ColorMatrix(
-               new float[][] 
-      {
-         new float[] {-1, 0, 0, 0, 0},
-         new float[] {0, -1, 0, 0, 0},
-         new float[] {0, 0, -1, 0, 0},
-         new float[] {0, 0, 0, 1, 0},
-         new float[] {1, 1, 1, 0, 1}
-      });
-
-            //create some image attributes
-            ImageAttributes attributes = new ImageAttributes();
-
-            //set the color matrix attribute
-            attributes.SetColorMatrix(colorMatrix);
-
-            //draw the original image on the new image
-            //using the grayscale color matrix
-            g.DrawImage(original, new Rectangle(0, 0, original.Width, original.Height),
-               0, 0, original.Width, original.Height, GraphicsUnit.Pixel, attributes);
-
-            //dispose the Graphics object
-            g.Dispose();
-            return newBitmap;
-        }
-
-        // From http://softwarebydefault.com/2013/04/20/image-contrast/
-        public Bitmap Contrast(Bitmap sourceBitmap, int threshold)
-        {
-            BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
-                                        sourceBitmap.Width, sourceBitmap.Height),
-                                        ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
-
-
-            byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
-
-            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
-
-            sourceBitmap.UnlockBits(sourceData);
-
-            double contrastLevel = Math.Pow((100.0 + threshold) / 100.0, 2);
-            double blue = 0;
-            double green = 0;
-            double red = 0;
-
-            for (int k = 0; k + 4 < pixelBuffer.Length; k += 4)
-            {
-                blue = ((((pixelBuffer[k] / 255.0) - 0.5) *
-                            contrastLevel) + 0.5) * 255.0;
-
-                green = ((((pixelBuffer[k + 1] / 255.0) - 0.5) *
-                            contrastLevel) + 0.5) * 255.0;
-
-                red = ((((pixelBuffer[k + 2] / 255.0) - 0.5) *
-                            contrastLevel) + 0.5) * 255.0;
-
-                if (blue > 255)
-                { blue = 255; }
-                else if (blue < 0)
-                { blue = 0; }
-                
-                if (green > 255)
-                { green = 255; }
-                else if (green < 0)
-                { green = 0; }
-
-                if (red > 255)
-                { red = 255; }
-                else if (red < 0)
-                { red = 0; }
-
-                pixelBuffer[k] = (byte)blue;
-                pixelBuffer[k + 1] = (byte)green;
-                pixelBuffer[k + 2] = (byte)red;
-            }
-
-            var resultBitmap = new Bitmap(sourceBitmap.Width, sourceBitmap.Height);
-            
-            BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0,
-                                        resultBitmap.Width, resultBitmap.Height),
-                                        ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-
-            Marshal.Copy(pixelBuffer, 0, resultData.Scan0, pixelBuffer.Length);
-            resultBitmap.UnlockBits(resultData);
-
-            return resultBitmap;
-        } 
-        #endregion
     }
 }

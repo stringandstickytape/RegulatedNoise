@@ -14,17 +14,22 @@ namespace RegulatedNoise
         public SortableBindingList<CommandersLogEvent> LogEvents { get; set; }
 
         private readonly Form1 _callingForm;
+        public bool isLoaded { get; set; }
 
         public CommandersLog(Form1 callingForm)
         {
             _callingForm = callingForm;
             
             LogEvents = new SortableBindingList<CommandersLogEvent>();
+
+            isLoaded = false;
         }
 
-        public void CreateEvent()
+        public string CreateEvent()
         {
-            _callingForm.tbLogEventID.Text = Guid.NewGuid().ToString();
+            String newEventID = Guid.NewGuid().ToString();
+
+            _callingForm.tbLogEventID.Text = newEventID;
 
             LogEvents.Add(new CommandersLogEvent 
             {
@@ -36,12 +41,16 @@ namespace RegulatedNoise
                 CargoVolume =int.Parse(_callingForm.cbLogQuantity.Text),
                 Notes =_callingForm.tbLogNotes.Text,
                 EventDate =DateTime.Parse(_callingForm.dtpLogEventDate.Text),
-                EventID =_callingForm.tbLogEventID.Text
+                EventID = newEventID
             });
+
+            return newEventID;
         }
 
-        public void CreateEvent(string eventType, string station, string system, string cargo, string cargoAction, int cargoVolume, string notes, DateTime eventDate)
+        public String CreateEvent(string eventType, string station, string system, string cargo, string cargoAction, int cargoVolume, string notes, DateTime eventDate)
         {
+            String newEventID = Guid.NewGuid().ToString();
+
             LogEvents.Add(new CommandersLogEvent
             {
                 EventType =               eventType                  ,
@@ -52,24 +61,32 @@ namespace RegulatedNoise
                 CargoVolume =             cargoVolume                ,
                 Notes =                   notes                      ,
                 EventDate        =        eventDate                  ,
-                EventID = Guid.NewGuid().ToString()
+                EventID = newEventID  
             });
 
             UpdateCommandersLogListView();
+
+            return newEventID;
         }
 
         public void CreateNewEvent() // Clears the fields ready for input
         {
-            var now =DateTime.UtcNow;
+            // set it to UTC everywhere or nowhere -> pay attention to the different timezones
+            // if you wan't to concatenate ED-time and local pc time
+            //var now =DateTime.UtcNow;
+            var now = DateTime.Now;
             ClearLogEventFields();
             _callingForm.dtpLogEventDate.Value =now;
             _callingForm.tbLogEventID.Text ="";
-            _callingForm.button21.Text = "Create This Entry And Clear";
+            _callingForm.btCreateAddEntry.Text = "Save As New Entry";
         }
 
         public void CreateEvent(CommandersLogEvent partiallyCompleteCommandersLogEventEvent) // when we create from the webserver
         {
-            var now = DateTime.UtcNow;
+            // set it to UTC everywhere or nowhere -> pay attention to the different timezones
+            // if you wan't to concatenate ED-time and local pc time
+            //var now =DateTime.UtcNow;
+            var now = DateTime.Now;
             var newGuid = Guid.NewGuid().ToString();
             ClearLogEventFields();
             _callingForm.dtpLogEventDate.Value = now;
@@ -95,61 +112,102 @@ namespace RegulatedNoise
 
             if (_callingForm.tbCurrentSystemFromLogs.Text != "")
                 _callingForm.cbLogSystemName.Text = _callingForm.tbCurrentSystemFromLogs.Text;
+
+            if (_callingForm.tbCurrentStationinfoFromLogs.Text != "")
+                _callingForm.cbLogStationName.Text = _callingForm.tbCurrentStationinfoFromLogs.Text;
         }
 
         public void SaveLog(bool force = false)
         {
-            string fileName;
+            string newFile, backupFile, currentFile;
+
             if (force)
-                fileName = "CommandersLogAutoSave.xml";
+                currentFile = "CommandersLogAutoSave.xml";
             else
-                fileName ="Commander's Log Events to "+DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss")+".xml";
-            if (!File.Exists(fileName)) File.Delete(fileName);
-            Stream stream =new FileStream(fileName, FileMode.Create, FileAccess.Write, FileShare.None);
+                currentFile = "Commander's Log Events to " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".xml";
+
+            newFile     = String.Format("{0}_new{1}", Path.GetFileNameWithoutExtension(currentFile), Path.GetExtension(currentFile));
+            backupFile  = String.Format("{0}_bak{1}", Path.GetFileNameWithoutExtension(currentFile), Path.GetExtension(currentFile));
+
+            Stream stream = new FileStream(newFile, FileMode.Create, FileAccess.Write, FileShare.None);
             var x =new XmlSerializer(LogEvents.GetType());
             x.Serialize(stream, LogEvents);
             stream.Close();
+
+            // we delete the current file not until the new file is written without errors
+
+            if (force)
+            {
+                // delete old backup
+                if (File.Exists(backupFile))
+                    File.Delete(backupFile);
+
+                // rename current file to old backup
+                if (File.Exists(currentFile))
+                    File.Move(currentFile, backupFile);
+            }
+            else
+            {
+                // delete file if exists
+                if (File.Exists(currentFile))
+                    File.Delete(currentFile);
+
+            }
+
+            // rename new file to current file
+            File.Move(newFile, currentFile);
+
         }
 
         public void LoadLog(bool force = false)
         {
-            var openFile =new OpenFileDialog
+            try
             {
-                DefaultExt = "xml",
-                Multiselect = false,
-                Filter = "XML (*.xml)|*.xml",
-                InitialDirectory = Environment.CurrentDirectory
-            };
+                var openFile = new OpenFileDialog
+                {
+                    DefaultExt = "xml",
+                    Multiselect = false,
+                    Filter = "XML (*.xml)|*.xml",
+                    InitialDirectory = Environment.CurrentDirectory
+                };
 
-            if(!force)
-                openFile.ShowDialog();
+                if (!force)
+                    openFile.ShowDialog();
 
-            if (force || openFile.FileNames.Length > 0)
-            {
-                var serializer =new XmlSerializer(typeof(SortableBindingList<CommandersLogEvent>));
+                if (force || openFile.FileNames.Length > 0)
+                {
+                    var serializer = new XmlSerializer(typeof(SortableBindingList<CommandersLogEvent>));
 
-                if (force && !File.Exists("CommandersLogAutoSave.xml"))
-                    return;
+                    if (force && !File.Exists("CommandersLogAutoSave.xml"))
+                        return;
 
-                var fs =new FileStream(force ? "CommandersLogAutoSave.xml" : openFile.FileName, FileMode.Open);
-                var reader =XmlReader.Create(fs);
+                    var fs = new FileStream(force ? "CommandersLogAutoSave.xml" : openFile.FileName, FileMode.Open);
+                    var reader = XmlReader.Create(fs);
 
-                var logEvents2 = (SortableBindingList<CommandersLogEvent>)serializer.Deserialize(reader);
-                LogEvents =logEvents2;
-                fs.Close();
+                    var logEvents2 = (SortableBindingList<CommandersLogEvent>)serializer.Deserialize(reader);
+                    LogEvents = logEvents2;
+                    fs.Close();
+                }
+
+                isLoaded = true;
             }
-
-            UpdateCommandersLogListView();
+            catch (Exception ex)
+            {
+                throw new Exception("Error loading CommandersLog", ex);
+            }
         }
 
         public void UpdateCommandersLogListView()
         {
+            _callingForm.lvCommandersLog.SuspendLayout();
+            _callingForm.lvCommandersLog.BeginUpdate();
+
             _callingForm.lvCommandersLog.Items.Clear();
             foreach (var x in LogEvents)
             {
                 var listViewData = new string[_callingForm.LogEventProperties.Count()];
 
-                listViewData[0] = x.EventDate.ToString(CultureInfo.InvariantCulture);
+                listViewData[0] = x.EventDate.ToString(CultureInfo.CurrentUICulture);
 
                 int ctr = 1;
                 foreach (var y in _callingForm.LogEventProperties)
@@ -163,6 +221,8 @@ namespace RegulatedNoise
 
                 _callingForm.lvCommandersLog.Items.Add(new ListViewItem(listViewData));
             }
+            _callingForm.lvCommandersLog.EndUpdate();
+            _callingForm.lvCommandersLog.ResumeLayout();
         }
     }
 
