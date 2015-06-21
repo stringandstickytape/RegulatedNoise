@@ -798,7 +798,7 @@
             // 
             this.splitContainer1.Panel2.Controls.Add(this.label9);
             this.splitContainer1.Panel2.Controls.Add(this.chart2);
-            this.splitContainer1.Size = new System.Drawing.Size(210, 465);
+            this.splitContainer1.Size = new System.Drawing.Size(208, 465);
             this.splitContainer1.SplitterDistance = 215;
             this.splitContainer1.SplitterWidth = 6;
             this.splitContainer1.TabIndex = 7;
@@ -825,7 +825,7 @@
             series3.ChartArea = "ChartArea1";
             series3.Name = "Series1";
             this.chart1.Series.Add(series3);
-            this.chart1.Size = new System.Drawing.Size(205, 213);
+            this.chart1.Size = new System.Drawing.Size(203, 213);
             this.chart1.TabIndex = 5;
             this.chart1.Text = "chart1";
             this.chart1.MouseMove += new System.Windows.Forms.MouseEventHandler(this.chart1_MouseMove);
@@ -852,7 +852,7 @@
             series4.ChartArea = "ChartArea1";
             series4.Name = "Series1";
             this.chart2.Series.Add(series4);
-            this.chart2.Size = new System.Drawing.Size(200, 221);
+            this.chart2.Size = new System.Drawing.Size(198, 219);
             this.chart2.TabIndex = 6;
             this.chart2.Text = "chart2";
             this.chart2.MouseMove += new System.Windows.Forms.MouseEventHandler(this.chart1_MouseMove);
@@ -2451,6 +2451,7 @@
             this.Controls.Add(this.button5);
             this.Controls.Add(this.tabControl1);
             this.Controls.Add(this.bOpen);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Show;
             this.Text = "RegulatedNoise v";
